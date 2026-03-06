@@ -38,6 +38,4 @@ jobs:
 
           gh pr comment "$PR_NUMBER" \
             --repo "$REPO" \
-            --body "## Claude Code Review
-
-${COMMENT}"
+            --body "$(printf '## Claude Code Review\n\n%s' "$COMMENT")"
