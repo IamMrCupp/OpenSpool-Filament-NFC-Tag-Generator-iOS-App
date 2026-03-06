@@ -86,4 +86,6 @@ Disclaimer: No caffeine was wasted in the making of this app. Much was consumed.
 
 ## License
 
-This project is open source. See [LICENSE](LICENSE) for details.
+Copyright 2026 Aaron Cupp (IamMrCupp)
+
+Licensed under the [Apache License, Version 2.0](LICENSE). You may not use this project except in compliance with the License. A copy is included in this repository, or you may obtain one at http://www.apache.org/licenses/LICENSE-2.0.
