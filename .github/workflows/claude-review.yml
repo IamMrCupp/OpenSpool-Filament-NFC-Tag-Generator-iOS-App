@@ -1,0 +1,43 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        run: git diff origin/${{ github.base_ref }}...HEAD > pr.diff
+
+      - name: Claude Review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          DIFF=$(cat pr.diff)
+          PROMPT="You are reviewing a pull request for an iOS NFC tag writing app (OpenSpool). Produce two sections:\n\n1. **PR Summary** — a concise plain-English description of what the PR does, what problem it solves, and any notable design decisions.\n\n2. **Full Review** — evaluate the diff across these areas, flagging each item as Blocking or Non-blocking:\n   - Correctness: logic errors, edge cases, proper NFCNDEFReaderSession lifecycle, JSON payload always includes required OpenSpool fields (protocol, version, type, color_hex), temperature fields stored as strings\n   - Security: no hardcoded secrets or PII, user input validated before writing to NFC tags, no unexpected data sent to external services, Keychain used for credentials, NFC errors surfaced to the user\n   - iOS-specific: entitlements and Info.plist keys are correct and minimal, UI on main thread, no deprecated APIs, iOS 14.0 deployment target respected, no retain cycles in closures\n   - Code quality: Swift API design guidelines, no unjustified force-unwraps, typed error propagation, test coverage for new logic\n\nDiff:\n${DIFF}"
+
+          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "{\"model\":\"claude-sonnet-4-6\",\"max_tokens\":4096,\"messages\":[{\"role\":\"user\",\"content\":$(echo "$PROMPT" | jq -Rs .)}]}")
+
+          COMMENT=$(echo "$RESPONSE" | jq -r '.content[0].text')
+
+          gh pr comment "$PR_NUMBER" \
+            --repo "$REPO" \
+            --body "## Claude Code Review
+
+${COMMENT}"
